@@ -29,17 +29,10 @@ export class Codex implements ICompletionModel {
     private readonly isStarCoder: boolean,
     private readonly instanceOptions: PostOptions = {}
   ) {
-    this.apiEndpoint = this.isStarCoder
-      ? getEnv("STARCODER_API_ENDPOINT")
-      : getEnv("TESTPILOT_LLM_API_ENDPOINT");
-    this.authHeaders = this.isStarCoder
-      ? "{}"
-      : getEnv("TESTPILOT_LLM_AUTH_HEADERS");
-    console.log(
-      `Using ${this.isStarCoder ? "StarCoder" : "GPT"} API at ${
-        this.apiEndpoint
-      }`
-    );
+
+    this.apiEndpoint = "https://api.openai.com/v1/chat/completions";
+    this.authHeaders = '{"Authorization": "Bearer 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","OpenAI-Organization": "org-LUunHCckTG5Xcx8LzbbUsQ6D"}';
+
   }
 
   /**
@@ -67,21 +60,84 @@ export class Codex implements ICompletionModel {
 
     performance.mark("codex-query-start");
 
-    const postOptions = this.isStarCoder
+    let postOptions = this.isStarCoder
       ? {
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: options.max_tokens,
-            temperature: options.temperature || 0.01, // StarCoder doesn't allow 0
-            n: options.n,
-          },
-        }
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: options.max_tokens,
+          temperature: options.temperature || 0.01, // StarCoder doesn't allow 0
+          n: options.n,
+        },
+      }
       : {
-          prompt,
-          ...options,
-        };
+        prompt,
+        ...options,
+      };
 
-    const res = await axios.post(this.apiEndpoint, postOptions, { headers });
+
+    // console.log("===========> ", postOptions);
+
+    let postOptions2 = {
+      "model": "gpt-3.5-turbo",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Write unit tests for the following function: function add(a, b) { return a + b; }"
+        }
+      ]
+    }
+
+    const res = await axios.post(this.apiEndpoint, postOptions2, { headers });
+
+    // console.log("====> ", res);
+
+    res.data = {
+      "id": "cmpl_abc123",
+      "model": "code-cushman-001",
+      "created": "2024-03-29T12:00:00Z",
+      "prompt": "def add(a, b):",
+      "completions": [
+        {
+          "generated_text": "    return a + b",
+          "score": 0.95
+        },
+        {
+          "generated_text": "    result = a + b",
+          "score": 0.90
+        },
+        {
+          "generated_text": "    sum = a + b",
+          "score": 0.85
+        }
+      ]
+    }
+
+
+    // const res = {
+    //   status: 200,
+    //   error: false,
+    //   data: {
+    //     "id": "cmpl_abc123",
+    //     "model": "code-cushman-001",
+    //     "created": "2024-03-29T12:00:00Z",
+    //     "prompt": "def add(a, b):",
+    //     "completions": [
+    //       {
+    //         "text": "    return a + b",
+    //         "score": 0.95
+    //       },
+    //       {
+    //         "text": "    result = a + b",
+    //         "score": 0.90
+    //       },
+    //       {
+    //         "text": "    sum = a + b",
+    //         "score": 0.85
+    //       }
+    //     ]
+    //   }
+    // }
+
 
     performance.measure(
       `codex-query:${JSON.stringify({
@@ -99,26 +155,35 @@ export class Codex implements ICompletionModel {
       throw new Error("Response data is empty");
     }
     const json = res.data;
-    if (json.error) {
-      throw new Error(json.error);
-    }
+    // if (json.error) {
+    //   throw new Error(json.error);
+    // }
     let numContentFiltered = 0;
     const completions = new Set<string>();
-    if (this.isStarCoder) {
-      completions.add(json.generated_text);
-    } else {
-      for (const choice of json.choices || [{ text: "" }]) {
-        if (choice.finish_reason === "content_filter") {
-          numContentFiltered++;
-        }
-        completions.add(choice.text);
-      }
+
+    for(let data of json.completions){
+      console.log("===>",data?.generated_text);
+      
+      completions.add(data?.generated_text);
     }
+    // if (false) {
+    //   completions.add(json?.completions);
+    // } else {
+    //   for (const choice of json.choices || [{ text: "" }]) {
+    //     if (choice.finish_reason === "content_filter") {
+    //       numContentFiltered++;
+    //     }
+    //     completions.add(choice.text);
+    //   }
+    // }
     if (numContentFiltered > 0) {
       console.warn(
         `${numContentFiltered} completions were truncated due to content filtering.`
       );
     }
+
+    console.log("======>",completions);
+    
     return completions;
   }
 
