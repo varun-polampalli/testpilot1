@@ -1,0 +1,93 @@
+pipeline {
+    agent {
+        label 'master'
+    }
+environment {
+        // Example of setting an environment variable conditionally
+        IS_WIN = "${isUnix() ? 'false' : 'true'}"
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout from the first Git repository into the 'APP' directory
+                dir('APP') {
+                    git branch: 'main', url: 'https://github.com/im-DataEngineer/testApplication.git'
+                    // git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'
+                 }
+                // Checkout from the second Git repository into the 'Tests' directory
+            
+                dir('Framework') {
+                    git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'
+                    // git branch: 'main', url: 'https://github.com/im-DataEngineer/testApplication.git'
+             }
+                
+            }
+        }
+        stage('Environment Check') {
+            steps {
+                script {
+                    if (env.IS_WIN == 'true') {
+                        // Windows specific command
+                        echo 'Running on Windows'
+                    } else {
+                        // Unix/Linux specific command
+                        echo 'Running on Unix/Linux'
+                    }
+                }
+            }
+        }
+        stage('Requirement Installtion') {
+            steps {
+                dir('Framework'){
+                    script {
+                    if (env.IS_WIN == 'true') {
+                        // Windows specific command
+                        bat 'pip install -r requirements.txt'
+                    } else {
+                        // Unix/Linux specific command
+                        // sh 'pip install -r requirements.txt'
+                        sh 'sudo apt install python3-venv'
+                        sh 'python3 -m venv myenv'
+                        sh '. myenv/bin/activate'
+                        sh 'pip install requests'
+                        sh 'pip install openai'
+                    }
+                }
+                }
+            }
+        }
+        
+        stage('Generate Unit Tests') {
+            steps {
+                // Run the script from the 'APP' directory and store the output in the 'Tests' directory
+                dir('Framework') {
+                    script {
+                        if (env.IS_WIN == 'true') {
+                            // bat 'python generate_tests.py ..\\APP
+                            bat 'python3 gen_ut.py ..\\APP' 
+                        } else {
+                            // sh 'python generate_tests.py app > ../Tests/generated_tests.py'
+                            // sh 'python3 generate_tests.py ../APP
+                            sh 'python3 gen_ut.py ..//APP'
+                        }
+                    }
+                }
+            }
+        }
+        stage('Run Unit Tests') {
+            steps {
+                dir('test') {
+                    script {
+                        if (env.IS_WIN == 'true') {
+                            // bat 'python generate_tests.py ..\\APP
+                            bat 'python main_test.py' 
+                        } else {
+                            // sh 'python generate_tests.py app > ../Tests/generated_tests.py'
+                            // sh 'python3 generate_tests.py ../APP
+                            sh 'python main_test.py'
+                        }
+                    }
+                }
+        }   }
+    }
+}
