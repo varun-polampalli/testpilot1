@@ -43,6 +43,11 @@ environment {
                     if (env.IS_WIN == 'true') {
                         // Windows specific command
                         bat 'pip install -r requirements.txt'
+                        bat 'sudo apt install python3-venv'
+                        bat 'python3 -m venv myenv'
+                        bat '. myenv/bin/activate'
+                        bat 'pip install requests'
+                        bat 'pip install openai'
                     } else {
                         // Unix/Linux specific command
                         // sh 'pip install -r requirements.txt'
