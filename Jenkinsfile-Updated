@@ -54,8 +54,9 @@ environment {
                         sh 'python3 -m venv myenv'
                         sh '. myenv/bin/activate'
                         sh 'sudo apt-get install python3-pip'
-                        sh 'pip install requests'
-                        sh 'pip install openai'
+                        //sh 'pip install requests'
+                        //sh 'pip install openai'
+                        sh 'pip install -r requirements.txt'
                     }
                 }
                 }
@@ -89,6 +90,7 @@ environment {
                         } else {
                             // sh 'python generate_tests.py app > ../Tests/generated_tests.py'
                             // sh 'python3 generate_tests.py ../APP
+                            
                             sh 'python3 main_test.py'
                         }
                     }
