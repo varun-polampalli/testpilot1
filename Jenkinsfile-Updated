@@ -1,10 +1,9 @@
 pipeline {
-    agent {
-        label 'master'
-    }
+    agent any
 environment {
         // Example of setting an environment variable conditionally
         IS_WIN = "${isUnix() ? 'false' : 'true'}"
+        API_KEY = credentials('openai-api-key')
     }
     stages {
         stage('Checkout') {
@@ -51,9 +50,10 @@ environment {
                     } else {
                         // Unix/Linux specific command
                         // sh 'pip install -r requirements.txt'
-                        sh 'sudo apt install python3-venv'
+                        sh 'sudo apt-get install python3-venv -y'
                         sh 'python3 -m venv myenv'
                         sh '. myenv/bin/activate'
+                        sh 'sudo apt-get install python3-pip'
                         sh 'pip install requests'
                         sh 'pip install openai'
                     }
@@ -85,11 +85,11 @@ environment {
                     script {
                         if (env.IS_WIN == 'true') {
                             // bat 'python generate_tests.py ..\\APP
-                            bat 'python main_test.py' 
+                            bat 'python3 main_test.py' 
                         } else {
                             // sh 'python generate_tests.py app > ../Tests/generated_tests.py'
                             // sh 'python3 generate_tests.py ../APP
-                            sh 'python main_test.py'
+                            sh 'python3 main_test.py'
                         }
                     }
                 }
