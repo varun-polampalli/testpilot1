@@ -1,0 +1,65 @@
+pipeline {
+    agent any
+    
+    environment {
+        API_KEY = credentials('openai-api-key')
+    }
+    
+    stages {
+        
+        stage('Checkout') {
+            steps {
+                dir('APP') {
+                    git branch: 'main', url: 'https://github.com/im-DataEngineer/testApplication.git'
+                 }
+                
+                dir('Framework') {
+                    git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'                   
+                }
+            }
+        }
+        
+        stage('Requirement Installation') {
+            steps {
+                dir('Framework') {
+                    sh 'sudo apt-get install python3-venv -y'
+                    sh 'python3 -m venv myenv'
+                    sh '. myenv/bin/activate'
+                    sh 'sudo apt-get install python3-pip'
+                    sh 'pip install -r requirements.txt'
+                    sh 'pip install -r ../APP/requirements.txt'                       
+                }
+            }
+        }
+        
+        stage('Generate Unit Tests') {
+            steps {
+                dir('Framework') {
+                    sh 'python3 gen_ut.py ..//APP'
+                }
+            }
+        }
+        
+        stage('Run Unit Tests') {
+            steps {
+                dir('test') {
+                    script {
+                        def pyFiles = sh(script: 'ls *.py', returnStdout: true).trim()
+                        
+                        if (pyFiles) {
+                            sh "python3 -m unittest discover -p '*_test.py'"
+                        } else {
+                            def javaFiles = sh(script: 'ls *.java', returnStdout: true).trim()
+                            
+                            if (javaFiles) {
+                                sh 'deactivate && javac *.java && java Main'
+                            } else {
+                                echo "No Python or Java files found in the test directory"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
