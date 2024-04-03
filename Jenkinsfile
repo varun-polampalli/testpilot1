@@ -12,6 +12,12 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/varun-polampalli/testpilot1.git'
             }
         }
+        stage('Cleanup Workspace') {
+            steps {
+                // Delete all contents of the workspace directory
+                deleteDir()
+            }
+        }
         stage('Environment Check') {
             steps {
                 script {
