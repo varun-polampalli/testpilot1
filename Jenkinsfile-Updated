@@ -6,18 +6,22 @@ environment {
         API_KEY = credentials('openai-api-key')
     }
     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                // Delete all contents of the workspace directory
+                deleteDir()
+            }
+        }
         stage('Checkout') {
             steps {
                 // Checkout from the first Git repository into the 'APP' directory
                 dir('APP') {
                     git branch: 'main', url: 'https://github.com/im-DataEngineer/testApplication.git'
-                    // git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'
                  }
                 // Checkout from the second Git repository into the 'Tests' directory
             
                 dir('Framework') {
-                    git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'
-                    // git branch: 'main', url: 'https://github.com/im-DataEngineer/testApplication.git'
+                    git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'                   
              }
                 
             }
@@ -40,25 +44,19 @@ environment {
                 dir('Framework'){
                     script {
                     if (env.IS_WIN == 'true') {
-                        // Windows specific command
                         bat 'pip install -r requirements.txt'
                         bat 'sudo apt install python3-venv'
                         bat 'python3 -m venv myenv'
                         bat '. myenv/bin/activate'
                         bat 'pip install requests'
                         bat 'pip install openai'
-                    } else {
-                        // Unix/Linux specific command
-                        // sh 'pip install -r requirements.txt'
+                    } else {                        
                         sh 'sudo apt-get install python3-venv -y'
                         sh 'python3 -m venv myenv'
                         sh '. myenv/bin/activate'
                         sh 'sudo apt-get install python3-pip'
                         sh 'pip install -r requirements.txt'
-                        sh 'pip install -r ../APP/requirements.txt'
-                        //sh 'pip install requests'
-                        //sh 'pip install openai'
-                        //sh 'pip install flask'
+                        sh 'pip install -r ../APP/requirements.txt'                       
                     }
                 }
                 }
@@ -70,14 +68,10 @@ environment {
                 // Run the script from the 'APP' directory and store the output in the 'Tests' directory
                 dir('Framework') {
                     script {
-                        if (env.IS_WIN == 'true') {
-                           // bat 'python generate_tests.py ..\\APP
+                        if (env.IS_WIN == 'true') {                           
                             bat 'python3 gen_ut.py ..\\APP' 
                             
-                        } else {
-                            // sh 'python generate_tests.py app > ../Tests/generated_tests.py'
-                            // sh 'python3 generate_tests.py ../APP
-                            
+                        } else {                          
                             sh 'python3 gen_ut.py ..//APP'
                         }
                     }
@@ -88,13 +82,21 @@ environment {
             steps {
                 dir('test') {
                     script {
-                        if (env.IS_WIN == 'true') {
-                            // bat 'python generate_tests.py ..\\APP
-                            bat 'python3 *.py' 
-                        } else {
-                            // sh 'python generate_tests.py app > ../Tests/generated_tests.py'
-                            // sh 'python3 generate_tests.py ../APP
-                            sh 'python3 *.py'
+                        if (env.IS_WIN == 'true') {                            
+                            // bat 'python3 *.py'
+                            bat """
+                            for %%F in (*.py) do (
+                            python "%%F"
+                            )
+                            """
+                        } else {                            
+                            // sh 'python3 *.py'
+                            // sh 'for f in *.py; do python3 "$f"; done'
+                            sh '''
+                            find . -name '*.py' | while read line; do
+                            python3 "$line"
+                            done
+                            '''
                         }
                     }
                 }
