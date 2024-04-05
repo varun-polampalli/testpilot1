@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'UPSTREAM_JOB_NAME', defaultValue: '', description: 'Name of the upstream job to copy artifacts from')
+    }
+    stages {
+        stage('git checkout') {
+             steps {
+                dir('APP') {
+                    git branch: 'main', url: "https://github.com/im-DataEngineer/testApplication.git"
+                }
+             }
+        }
+        stage('Prepare Environment') {
+            steps {
+                // Assuming a similar environment setup is required
+                sh '''
+                sudo apt-get install python3-venv -y
+                python3 -m venv myenv
+                . myenv/bin/activate
+                sudo apt-get install python3-pip
+                '''
+            }
+        }
+        stage('Copy Local Test Cases') {
+            steps {
+                script {
+                    // Copy test files from local system
+                    sh 'cp -r /path/to/local/test/directory test'
+                }
+            }
+        }
+        
+        stage('Run Unit Tests') {
+            steps {
+                dir('test') {
+                    // Run unit tests
+                    sh 'python3 -m unittest discover -s . -p "*_test.py"'
+                }
+            }
+        }
+    }
+}
+
