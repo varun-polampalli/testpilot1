@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'APP_REPO', defaultValue: 'https://github.com/im-DataEngineer/testApplication.git', description: 'URL for Application Repository')
+        
+    }
+    environment {
+        API_KEY = credentials('openai-api-key')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                dir('APP') {
+                    git branch: 'main', url: "${params.APP_REPO}"
+                }
+                dir('Framework') {
+                    git branch: 'test_env', url: "https://github.com/im-DataEngineer/genUT.git"
+                }
+            }
+        }
+        stage('Requirement Installation') {
+            steps {
+                dir('Framework') {
+                    sh '''
+                    sudo apt-get install python3-venv -y
+                    python3 -m venv myenv
+                    . myenv/bin/activate
+                    sudo apt-get install python3-pip
+                    pip install -r requirements.txt
+                    pip install -r ../APP/requirements.txt
+                    '''
+                }
+            }
+        }
+        stage('Generate Unit Tests') {
+            steps {
+                dir('Framework') {
+                    sh 'python3 gen_ut.py ../APP'
+                }
+            }
+        }
+    }
+    post {
+        success {
+            archiveArtifacts artifacts: 'test/**/*', onlyIfSuccessful: true
+        }
+    }
+}
