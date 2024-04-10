@@ -120,7 +120,7 @@ pipeline {
                                  sh 'mkdir -p lib && wget -O lib/junit-4.13.2.jar https://search.maven.org/remotecontent?filepath=junit/junit/4.13.2/junit-4.13.2.jar'
                                  sh 'mkdir -p lib && wget -O lib/hamcrest-core-1.3.jar https://search.maven.org/remotecontent?filepath=org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar'
                                 //  sh 'javac -cp "lib/junit-4.13.2.jar" -d test *.java'
-                                 sh 'javac -cp ".:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" -d . /var/lib/jenkins/workspace/Test-java/app/*.java *.java'
+                                 sh 'javac -cp ".:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" -d . ${WORKSPACE}/app/*.java *.java'
                                 //  sh 'javac -cp ".:lib/junit-4.13.2.jar" -d . /var/lib/jenkins/workspace/Test-java/app/Factorial.java /var/lib/jenkins/workspace/Test-java/test/FactorialTest.java'
                                 //  sh 'java -cp "lib/junit-4.13.2.jar:test" org.junit.runner.JUnitCore $(find test -type f -name "*.class" | sed "s|test/||" | sed "s|/|.|g" | sed "s|.class||g" | tr "\\n" " ")'
                                 // sh 'java -cp "lib/junit-4.13.2.jar:." org.junit.runner.JUnitCore $(ls *.class | sed "s|.class$||" | tr "\\n" " ")'
