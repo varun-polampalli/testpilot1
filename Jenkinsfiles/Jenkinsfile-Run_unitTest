@@ -1,0 +1,109 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'UPSTREAM_JOB_NAME', defaultValue: '', description: 'Name of the upstream job to copy artifacts from')
+    }
+    stages {
+        stage('git checkout') {
+             steps {
+                dir('APP') {
+                    git branch: 'main', url: "https://github.com/im-DataEngineer/testApplication.git"
+                }
+             }
+        }
+        stage('Prepare Environment') {
+            steps {
+                // Assuming a similar environment setup is required
+                sh '''
+                sudo apt-get install python3-venv -y
+                python3 -m venv myenv
+                . myenv/bin/activate
+                sudo apt-get install python3-pip
+                '''
+            }
+        }
+        stage('Copy Local Test Cases') {
+            steps {
+                script {
+                    // Copy test files from local system
+                    sh 'cp -r /path/to/local/test/directory test'
+                }
+            }
+        }
+        
+        stage('Run Unit Tests') {
+            steps {
+                dir('test') {
+                    // Run unit tests
+                    sh 'python3 -m unittest discover -s . -p "*_test.py"'
+                }
+            }
+        }
+    }
+}
+
+=========================================================================================
+pipeline {
+    agent any
+    parameters {
+        string(name: 'LOCAL_APP_PATH', defaultValue: 'C:\\path\\to\\local\\app\\directory', description: 'Local App Directory Path')
+        string(name: 'LOCAL_TEST_PATH', defaultValue: 'C:\\path\\to\\local\\test\\directory', description: 'Local Test Directory Path')
+    }
+    
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                bat 'rmdir /s /q *' // Clean workspace before starting
+            }
+        }
+        
+        stage('Copy Local App Files') {
+            steps {
+                bat "xcopy /s /e ${params.LOCAL_APP_PATH}\\* .\\app\\"
+            }
+        }
+        
+        stage('Copy Local Test Files') {
+            steps {
+                bat "xcopy /s /e ${params.LOCAL_TEST_PATH}\\* .\\test\\"
+            }
+        }
+        
+        stage('Run Unit Tests') {
+    steps {
+        dir('test') {
+            script {
+                def pyFiles = bat(script: 'dir *.py /b || echo.', returnStdout: true).trim()
+                def javaFiles = bat(script: 'dir *.java /b || echo.', returnStdout: true).trim()
+
+                if (pyFiles) {                    
+                    bat 'python -m unittest discover -s . -p "*_test.py"'
+                } else if (javaFiles) {
+                    // Java files found, execute them
+                    // Downloading JUnit jar and Hamcrest jar - might need manual download or different command in Windows
+                    bat 'mkdir lib && powershell -Command "Invoke-WebRequest -Uri https://search.maven.org/remotecontent?filepath=junit/junit/4.13.2/junit-4.13.2.jar -OutFile lib\\junit-4.13.2.jar"'
+                    bat 'mkdir lib && powershell -Command "Invoke-WebRequest -Uri https://search.maven.org/remotecontent?filepath=org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar -OutFile lib\\hamcrest-core-1.3.jar"'
+                    bat "javac -cp \".;lib\\junit-4.13.2.jar;lib\\hamcrest-core-1.3.jar\" -d . %WORKSPACE%\\app\\*.java *.java"
+
+                    def testClasses = bat(script: "dir /b /s *.class", returnStdout: true).trim().split('\\r?\\n')
+
+                    // Run JUnit tests for each test class found
+                    testClasses.each { testClass ->
+                        // Extract the class name from the file path, adjusting for Windows file paths
+                        def className = testClass.replaceAll('.*\\\\|\\.class', '').replaceAll('\\\\', '.')
+
+                        // Run JUnit tests for the current test class, adjusting classpath separator for Windows
+                        bat "java -cp .;lib\\junit-4.13.2.jar;lib\\hamcrest-core-1.3.jar org.junit.runner.JUnitCore  ${className}"
+                    }
+                } else {
+                    // No Python or Java files found in the test directory
+                    echo "No Python or Java files found in the test directory"
+                }
+            }
+        }
+    }
+}
+
+    }
+}
+

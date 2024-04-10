@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+    parameters {
+        
+        string(name: 'LOCAL_APP_PATH', defaultValue: '/path/to/local/app/directory', description: 'Local App Directory Path')
+        string(name: 'LOCAL_TEST_PATH', defaultValue: '/path/to/local/app/directory', description: 'Local Test Directory Path')
+    }
+    
+    stages {
+       
+        // stage('Clean Workspace') {
+        //     steps {
+        //         deleteDir() // Clean workspace before starting
+        //     }
+        // }
+        
+        stage('Copy Local App Files') {
+            steps {
+                script {
+                    dir('APP'){
+                    // Use the LOCAL_APP_PATH parameter provided by the user to copy files
+                    sh "cp -r ${params.LOCAL_APP_PATH}/* ."
+                    }
+                }
+            }
+        }
+        stage('Copy Local Test Files') {
+            steps {
+                script {
+                    dir('Test'){
+                    // Use the LOCAL_APP_PATH parameter provided by the user to copy files
+                    sh "cp -r ${params.LOCAL_TEST_PATH}/* ."
+                    }
+                }
+            }
+        }
+        stage('Run Unit Tests') {
+            steps {
+                dir('Test') {
+                    sh 'python3 -m unittest discover -s . -p "*_test.py"'
+                }
+            }
+        }
+    }
+}

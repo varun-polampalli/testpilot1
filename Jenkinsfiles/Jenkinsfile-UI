@@ -1,0 +1,121 @@
+pipeline {
+    agent any
+    
+    environment {
+        API_KEY = credentials('openai-api-key')
+    }
+    parameters {
+        string(name: 'GITHUB_REPO_URL', defaultValue: 'https://github.com/im-DataEngineer/testApplication.git', description: 'Enter GitHub Repository URL')
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Enter the Branch Name')
+    }
+
+    stages {
+        
+        stage('Checkout') {
+            steps {
+                dir('APP') {
+                    git branch: "${params.BRANCH_NAME}", url: "${params.GITHUB_REPO_URL}"
+                 }
+                
+                dir('Framework') {
+                    git branch: 'test_env', url: 'https://github.com/im-DataEngineer/genUT.git'                   
+                }
+            }
+        }
+        stage('Environment Check') {
+            steps {
+                script {
+                    if (env.IS_WIN == 'true') {
+                        // Windows specific command
+                        echo 'Running on Windows'
+                    } else {
+                        // Unix/Linux specific command
+                        echo 'Running on Unix/Linux'
+                    }
+                }
+            }
+        }
+        stage('Requirement Installtion') {
+            steps {
+                dir('Framework'){
+                    script {
+                    if (env.IS_WIN == 'true') {
+                        bat 'pip install -r requirements.txt'
+                        bat 'sudo apt install python3-venv'
+                        bat 'python3 -m venv myenv'
+                        bat '. myenv/bin/activate'
+                        bat 'pip install requests'
+                        bat 'pip install openai'
+                    } else {                        
+                        sh 'sudo apt-get install python3-venv -y'
+                        sh 'python3 -m venv myenv'
+                        sh '. myenv/bin/activate'
+                        sh 'sudo apt-get install python3-pip'
+                        sh 'pip install -r requirements.txt'
+                        sh 'pip install -r ../APP/requirements.txt'                       
+                    }
+                }
+                }
+            }
+        }
+        
+        stage('Generate Unit Tests') {
+            steps {
+                // Run the script from the 'APP' directory and store the output in the 'Tests' directory
+                dir('Framework') {
+                    script {
+                        if (env.IS_WIN == 'true') {                           
+                            bat 'python3 gen_ut.py ..\\APP' 
+                            
+                        } else {                          
+                            sh 'python3 gen_ut.py ..//APP'
+                        }
+                    }
+                }
+            }
+        }
+        // New stage for user approval
+        stage('Await User Approval') {
+            steps {
+                script {
+                    // This will pause the pipeline and wait for user input
+                    input(message: "Review generated unit tests. Approve to continue.", ok: 'Proceed')
+                }
+            }
+        }
+        stage('Run Unit Tests') {
+        steps {
+            dir('test') {
+                script {
+                    def pyFiles = sh(script: 'ls *.py || true', returnStdout: true).trim()
+                    def javaFiles = sh(script: 'ls *.java || true', returnStdout: true).trim()
+                
+                        if (pyFiles) {
+                            // Python files found, execute them
+                            if (env.IS_WIN == 'true') {
+                                bat """
+                                    for %%F in (*.py) do (
+                                        python "%%F"
+                                    )
+                                """
+                            } else {
+                                sh "python3 -m unittest discover -p '*_test.py'"
+                            }
+                        } else if (javaFiles) {
+                            // Java files found, execute them
+                            if (env.IS_WIN == 'true') {
+                                bat 'deactivate && javac *.java && java Main'
+                            } else {
+                                sh 'deactivate && javac *.java && java Main'
+                            }
+                        } else {
+                            // No Python or Java files found in the test directory
+                            echo "No Python or Java files found in the test directory"
+                        }
+            }
+        }
+    }
+}
+
+    }
+}
