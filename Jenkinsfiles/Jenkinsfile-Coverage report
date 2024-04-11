@@ -57,3 +57,67 @@ pipeline {
         }
     }
 }
+====================================================================================
+For windows :
+------------
+pipeline {
+    agent any
+    parameters {
+        string(name: 'LOCAL_APP_PATH', defaultValue: 'C:\\path\\to\\local\\app\\directory', description: 'Local App Directory Path')
+        string(name: 'LOCAL_TEST_PATH', defaultValue: 'C:\\path\\to\\local\\test\\directory', description: 'Local Test Directory Path')
+        string(name: 'JOB_PATH', defaultValue: '', description: 'Current Job Path')
+    }
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                deleteDir() // Clean workspace before starting
+            }
+        }
+        stage('Copy Local App Files') {
+            steps {
+                bat "xcopy /s /e ${params.LOCAL_APP_PATH}\\* .\\app\\"
+            }
+        }
+        stage('Copy Local Test Files') {
+            steps {
+                bat "xcopy /s /e ${params.LOCAL_TEST_PATH}\\* .\\test\\"
+            }
+        }
+        // stage('Run Unit Tests') {
+        //     steps {
+        //         script {
+        //             try {
+        //                 dir('test') {
+        //                     bat 'python -m unittest discover -s . -p "*_test.py"'
+        //                 }
+        //             } catch (Exception e) {
+        //                 echo "Unit test execution failed: ${e.message}"
+        //                 currentBuild.result = 'UNSTABLE'
+        //             }
+        //         }
+        //     }
+        // }
+        stage('Generate Coverage Report') {
+            steps {
+                dir('test') {
+                    script {
+                        // Assuming Python and coverage.py are installed and accessible in the PATH
+                        bat 'python -m venv myenv'
+                        bat 'myenv\\Scripts\\activate'
+                        bat '"C:\\Users\\Abhishek Kumar\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\pip.exe" install coverage'
+						// Running tests with coverage, but not failing the build immediately if tests fail
+						bat(
+							script: '"C:\\Users\\Abhishek Kumar\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\coverage.exe" run --source ..\\app -m unittest discover -s . -p "*_test.py"',
+							returnStatus: true // This captures the exit code without failing the build
+					)
+                        // Adjusting the path for Windows and specifying the command to run coverage
+                        // bat '"C:\\Users\\Abhishek Kumar\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\coverage.exe" run --source ..\\app -m unittest discover -s . -p "*_test.py"'
+                        bat '"C:\\Users\\Abhishek Kumar\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\coverage.exe" report'
+                        bat '"C:\\Users\\Abhishek Kumar\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\coverage.exe" xml -o coverage.xml'
+                    }
+                }
+            }
+        }
+ 
+    }
+}
